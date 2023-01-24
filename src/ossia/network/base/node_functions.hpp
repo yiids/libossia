@@ -134,7 +134,15 @@ std::pair<std::vector<std::string>, bool> expand_address(const std::string& addr
  */
 OSSIA_EXPORT
 std::vector<ossia::net::node_base*>
-list_all_children(ossia::net::node_base* node, unsigned int depth = 0);
+list_all_children(ossia::net::node_base* node, unsigned int depth = 0, bool sort = true);
+
+OSSIA_EXPORT
+void
+list_all_children(
+        ossia::net::node_base* node,
+        std::vector<ossia::net::node_base*>&out,
+        unsigned int depth,
+        bool sort);
 
 struct OSSIA_EXPORT fuzzysearch_result
 {
