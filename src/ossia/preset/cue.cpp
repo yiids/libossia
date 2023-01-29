@@ -110,12 +110,12 @@ void namespace_selection::set_device(ossia::net::device_base* dev)
   namespace_select("/");
 }
 
-void cues::recall(ossia::net::node_base& root, int idx)
+void cues::recall(ossia::net::node_base& root, namespace_selection& sel, int idx)
 {
   if(!has_cue(idx))
       return;
   m_current = idx;
-  recall(root);
+  recall(root, sel);
 }
 
 struct priority_sort
@@ -128,11 +128,12 @@ struct priority_sort
   }
 };
 
-void cues::recall(ossia::net::node_base& root)
+void cues::recall(ossia::net::node_base& root, namespace_selection& sel)
 {
   if(!has_cue(m_current))
       return;
 
+  sel.m_selection.clear();
   boost::container::small_flat_multimap<
       ossia::net::parameter_base*, ossia::value*, 512, priority_sort>
       params;
@@ -141,9 +142,23 @@ void cues::recall(ossia::net::node_base& root)
   {
     // No pattern in saved cue
     if(auto n = ossia::net::find_node(root, addr))
+    {
       if(auto p = n->get_parameter())
+      {
         if(!ossia::net::get_recall_safe(*n))
+        {
           params.emplace(p, &val);
+        }
+      }
+
+      // Add the node to the running selection
+      while(sel.m_selection.insert(n).second)
+      {
+        n = n->get_parent();
+        if(!n)
+          break;
+      }
+    }
   }
 
   for(auto elt : params)
@@ -366,10 +381,10 @@ void cues::rename(std::string_view newname)
     rename(m_current, newname);
 }
 
-void cues::recall(ossia::net::node_base& root, std::string_view name)
+void cues::recall(ossia::net::node_base& root, namespace_selection& sel, std::string_view name)
 {
   m_current = get_cue(name);
-  recall(root);
+  recall(root, sel);
 }
 
 void cues::update(ossia::net::node_base& root, const namespace_selection& selection, int idx)
@@ -400,12 +415,15 @@ void cues::update(ossia::net::node_base& root, const namespace_selection& select
   */
 
   // v3: we always update the local nodes
-  for(auto& [addr, val] : cue.preset)
-  {
-    if(auto n = ossia::net::find_node(root, addr))
-      if(auto p = n->get_parameter())
-        val = p->value();
-  }
+  // for(auto& [addr, val] : cue.preset)
+  // {
+  //   if(auto n = ossia::net::find_node(root, addr))
+  //     if(auto p = n->get_parameter())
+  //       val = p->value();
+  // }
+
+  // v4: we start from scratch
+  cue.preset.clear();
 
   // And we also add the new ones
   for(auto node : selection.m_selection)
